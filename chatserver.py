@@ -15,7 +15,7 @@ import socket
 import sys
 import signal
 sendHistory = []
-BUFSIZE = 1024
+BUFSIZE = 8192
 
 totalMessages = 0
 class ChatServer(object):
@@ -76,27 +76,26 @@ class ChatServer(object):
                     client, address = self.server.accept()
                     print 'chatserver: got connection %d from %s' % (client.fileno(), address)
                     # Read the login name
-                    #try:
-                    cname = client.recv(BUFSIZE)#.split('ME IS ')[1].strip("\n").lower()
-                    split = cname.split(" ")
-                    if split[0] == "ME" and split[1] == "IS" and len(split) == 3:
-                        cname = split[2].strip("\n")
-                        cname = cname.lower()
-                    else:
-                        client.sendall("ERROR\n")
-                        #print cname
-                    #except:
-                        #cname = ""
-                    if cname == "":
-                        client.sendall("ERROR\n")
-                        continue
+                    try:
+                        cname = client.recv(BUFSIZE)#.split('ME IS ')[1].strip("\n").lower()
+                        split = cname.split(" ")
+                        if split[0] == "ME" and split[1] == "IS" and len(split) == 3:
+                            cname = split[2].strip("\n")
+                            cname = cname.lower()
+                        else:
+                            client.sendall("ERROR\n")
+                            break
+                            #print cname
+                    except:
+                        break
+                                          
                     
                     if cname in self.usernames:
                         client.sendall("ERROR\n")
-                        continue
+                        break
                     else:
                         self.usernames[cname] = client #keep track of usernames paired to the client id
-                        print "cname is: ", cname
+                        #print "cname is: ", cname
                         client.sendall("OK\n")
                     
                     # Compute client name and send back
@@ -116,13 +115,16 @@ class ChatServer(object):
                 else:
                     # handle all other sockets
                     try:
-                        # data = s.recv(BUFSIZ)
-                        data = s.recv
+                        data = s.recv(BUFSIZE)
+                        #data = s.recv
+                        print data
                         
                         if data:
                             # Send as new client's message...
                             messageBody = data.split("\n")
                             message = messageBody[0].split(" ")
+                            print message
+                            print messageBody
                             if message[0] == "SEND":
                                 tosend = "FROM " + message[1] + "\n"
                                 
@@ -151,6 +153,7 @@ class ChatServer(object):
                                 for part in spliced:
                                     #print(part)
                                     part = part.strip() + "\n" #readd the \n
+                                    print part
                                     for key in self.usernames:
                                         self.usernames[key].send(part)
                                     #print(part)

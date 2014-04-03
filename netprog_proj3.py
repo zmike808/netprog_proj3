@@ -1,190 +1,205 @@
-import socket
-import threading
-import socketserver
-import sys
-connectedUsers = dict()
-class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
+# First the server
 
-    def handle(self):
-        ip,port =  self.client_address
-        clientKey = str(ip) + ":" + str(port)
-        #print(clientKey)
-        whoami = ""
-        while True:
+#!/usr/bin/env python
+#!/usr/bin/env python
+
+"""
+A basic, multiclient 'chat server' using Python's select module
+with interrupt handling.
+
+Entering any line of input at the terminal will exit the server.
+"""
+
+import select
+import socket
+import sys
+import signal
+sendHistory = []
+BUFSIZE = 8192
+
+totalMessages = 0
+class ChatServer(object):
+    """ Simple chat server using select """
+    
+    def __init__(self, port=3490, backlog=5):
+        self.clients = 0
+        # Client map
+        self.clientmap = {}
+        # Output socket list
+        self.outputs = []
+        self.usernames = dict()
+        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.server.bind(('',port))
+        print 'Listening to port',port,'...'
+        self.server.listen(backlog)
+        # Trap keyboard interrupts
+        signal.signal(signal.SIGINT, self.sighandler)
+        
+    def sighandler(self, signum, frame):
+        # Close the server
+        print 'Shutting down server...'
+        # Close existing client sockets
+        for o in self.outputs:
+            o.close()
+            
+        self.server.close()
+
+    def getname(self, client):
+
+        # Return the printable name of the
+        # client, given its socket...
+        info = self.clientmap[client]
+        host, name = info[0][0], info[1]
+        return '@'.join((name, host))
+        
+    def serve(self):
+        
+        inputs = [self.server,sys.stdin]
+        self.outputs = []
+
+        running = 1
+
+        while running:
+
             try:
-                data = self.request.recv(65565)
-                if not data:
-                    continue
-                if clientKey in connectedUsers:
-                    #print("somehow we made it guys!")
-                    data = str(data,'ascii')
-                    #print(data)
-                    #exit()
-                
-                    messageBody = data.split("\n")
-                    message = messageBody[0].split(" ")
-                    #print(message)
-                    #break
-                    if message[0] == "SEND":
-                        #print(message)
-                        for key,value in connectedUsers.items():
-                            #print("KEY & VALUE:",key,value)
-                            
-                            if (message[2].lower()).strip("\n") == value:
+                inputready,outputready,exceptready = select.select(inputs, self.outputs, [])
+            except select.error, e:
+                break
+            except socket.error, e:
+                break
+
+            for s in inputready:
+
+                if s == self.server:
+                    # handle the server socket
+                    client, address = self.server.accept()
+                    print 'chatserver: got connection %d from %s' % (client.fileno(), address)
+                    # Read the login name
+                    try:
+                        cname = client.recv(BUFSIZE)#.split('ME IS ')[1].strip("\n").lower()
+                        split = cname.split(" ")
+                        if split[0] == "ME" and split[1] == "IS" and len(split) == 3:
+                            cname = split[2].strip("\n")
+                            cname = cname.lower()
+                        else:
+                            client.sendall("ERROR\n")
+                            break
+                            #print cname
+                    except:
+                        break
+                                          
+                    
+                    if cname in self.usernames:
+                        client.sendall("ERROR\n")
+                        break
+                    else:
+                        self.usernames[cname] = client #keep track of usernames paired to the client id
+                        #print "cname is: ", cname
+                        client.sendall("OK\n")
+                    
+                    # Compute client name and send back
+                    self.clients += 1
+                    #send(client, 'CLIENT: ' + str(address[0]))
+                    inputs.append(client)
+
+                    self.clientmap[client] = (address, cname)
+                    
+                    
+                    self.outputs.append(client)
+
+                elif s == sys.stdin:
+                    # handle standard input
+                    junk = sys.stdin.readline()
+                    running = 0
+                else:
+                    # handle all other sockets
+                    try:
+                        data = s.recv(BUFSIZE)
+                        #data = s.recv
+                        print data
+                        
+                        if data:
+                            # Send as new client's message...
+                            messageBody = data.split("\n")
+                            message = messageBody[0].split(" ")
+                            print message
+                            print messageBody
+                            if message[0] == "SEND":
+                                tosend = "FROM " + message[1] + "\n"
+                                
+                                    
+                                sendHistory.append(message[1])
+                                
+                                spliced = messageBody[1:]
+                                for part in spliced:
+                                    #print(part)
+                                    part = part.strip() + "\n" #readd the \n
+                                    for x in range(2,len(message)):
+                                        self.usernames[message[x]].sendall(part)
+                                    #print(part)
+                                    #print("part0: ",part[0],"clientKey:",clientKey)
+                                    #if (part[0] == "C" and part[len(part)-1] == "\n") or (len(part) <= 3 and part[len(part)-1] == "\n" and part[0].isdigit()):
+                                        #print("owow filter worked?")
+                                        #continue
+                                    #else:
+                                        #tosend = tosend + part
+                                
+                                #if len(sendHistory) == 3:
+                                    
+                            elif message[0] == "BROADCAST":
                                 tosend = "FROM " + message[1] + "\n"
                                 spliced = messageBody[1:]
-                                #print(spliced)
                                 for part in spliced:
                                     #print(part)
                                     part = part.strip() + "\n" #readd the \n
-
+                                    print part
+                                    for key in self.usernames:
+                                        self.usernames[key].send(part)
                                     #print(part)
                                     #print("part0: ",part[0],"clientKey:",clientKey)
-                                    if (part[0] == "C" and part[len(part)-1] == "\n") or (len(part) <= 3 and part[len(part)-1] == "\n" and part[0].isdigit()):
+                                    #if (part[0] == "C" and part[len(part)-1] == "\n") or (len(part) <= 3 and part[len(part)-1] == "\n" and part[0].isdigit()):
                                         #print("owow filter worked?")
-                                        continue
-                                    else:
-                                        tosend = tosend + part
-                                        #print(part)
-                                    
-
-                                #print(tosend)
-                                sendtoIP,sendtoPort = key.split(":")
-                                #sendtoAddress = sendtoIP,sendtoPort
-                                #print ((sendtoIP,int(sendtoPort)))
-                                self.request.sendto(bytes(tosend,'ascii'),(sendtoIP,int(sendtoPort)))
-                                #self.request.send(bytes("SUCCESS\n",'ascii'))
-                                break
-                    elif message[0] == "BROADCAST":
-                       for key,value in connectedUsers.items():
-                           
-                            if whoami != value:
-                                tosend = "FROM " + whoami + "\n"
-                                spliced = messageBody[1:]
-                                #print(spliced)
-                                for part in spliced:
-                                    #print(part)
-                                    part = part.strip() + "\n" #readd the \n
-
-                                    #print(part)
-                                    #print("part0: ",part[0],"clientKey:",clientKey)
-                                    if (part[0] == "C" and part[len(part)-1] == "\n") or (len(part) <= 3 and part[len(part)-1] == "\n" and part[0].isdigit()):
-                                        #print("owow filter worked?")
-                                        continue
-                                    else:
-                                        tosend = tosend + part
-                                        #print(part)
-                                    
-
-                                #print(tosend)
-                                sendtoIP,sendtoPort = key.split(":")
-                                #sendtoAddress = sendtoIP,sendtoPort
-                                #print ((sendtoIP,int(sendtoPort)))
-                                self.request.sendto(bytes(tosend,'ascii'),(sendtoIP,int(sendtoPort)))
-                    elif message[0] == "LOGOUT":
-                        #literally 0 documentation or explaination for this in the project assignment, G plz stahppp
-                        for key,value in connectedUsers.items():
-                            if value == whoami:
-                                del connectedUsers[key]
-                                return
-                    elif message[0] == "WHO" and message[1] == "HERE":
-                        whohere = ""
-                        for key,value in connectedUsers.items():
-                            whohere = whowhere + value + "\n"
-                        
-                        self.request.sendall(whohere)
-                else:
-                    data = str(data,'ascii')
-                    data = data.strip("\n")
-                    message = data.split(" ")
-                    if len(message) == 3 and message[0] == "ME" and message[1] == "IS":
-                        #proper login/auth message!
-                        if message[2].lower() in connectedUsers.values():
-                            response = bytes("ERROR\n", 'ascii')
-                            self.request.sendall(response)
+                                        #continue
+                                    #else:
+                                        #tosend = tosend + part
+                                
+                            elif message[0] == "WHO" and message[1] == "HERE":
+                                whohere = ""
+                                for key in self.usernames:
+                                    whohere = whowhere + key + "\n"
+                                self.usernames[message[2]].send(whohere)
+                            elif message[0] == "LOGOUT":
+                                self.clients -= 1
+                                del self.usernames[message[1]]
+                                s.close()
+                                inputs.remove(s)
+                                self.outputs.remove(s)
+                               
                         else:
-                            connectedUsers[clientKey] = message[2].lower()
-                            whoami = message[2].lower()
-                            response = bytes("OK\n", 'ascii')
-                            self.request.sendall(response)
-                    else:
-                        response = bytes("ERROR\n", 'ascii')
-                        self.request.sendall(response)
-            except:
-                pass
-       
+                            #print 'chatserver: %d hung up' % s.fileno()
+                            self.clients -= 1
+                            for key,value in usernames:
+                                if value == s:
+                                    del usernames[key]
+                            s.close()
+                            inputs.remove(s)
+                            self.outputs.remove(s)
+                            
+                                    
+                            
+                                
+                    except socket.error, e:
+                        # Remove
+                        for key,value in usernames:
+                                if value == s:
+                                    del usernames[key]
+                        inputs.remove(s)
+                        self.outputs.remove(s)
+                        
 
-class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
-    pass
-#not part of the project, just some blackmagic i was trying to conjure so i could test 2 clients at 1 time in 1 instance of python, alas python's black magic is just not that strong
-class ThreadedClient(threading.Thread):
-    def __init__(self,ip, port, message,id):
-        super(ThreadedClient,self).__init__()
-        self.ip = ip
-        self.port=port
-        self.message=message
-        self.id=id
-    def run(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((self.ip, self.port))
-        try:
-            sock.sendall(bytes(self.message, 'ascii'))
-            response = str(sock.recv(1024), 'ascii')
-            print("Received: {}".format(response), "client id first response:",self.id)
-            if self.id == 2:
-                sendTest = "SEND test test2\n C108\n  step off my turf!\n  step off my turf!\n  step off my turf!\n  step off my turf!\n  step off my turf!\n  step off my turf!\n  C8\n  got it?!\n  C0\n"
-                sock.sendall(bytes(sendTest,'ascii'))
-                response2 = str(sock.recv(1024),'ascii')
-                print("THREADEDreceived:",response2)
-            else:
-                print("waiting to recieve")
-                response = str(sock.recv(1024), 'ascii')
-                print("Received: {}".format(response),"client id:",self.id)
-        finally:
-            #pass
-            sock.close()
-client1 = None
-#see threadedclient explaination
-def client(ip,port,message,id):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.connect((ip, port))
-    try:
-        sock.sendall(bytes(message, 'ascii'))
-        response = str(sock.recv(1024), 'ascii')
-        print("NONTHREADED CLIENT!!!Received: {}".format(response))
-        print("waiting to recieve from test\n")
-        client1.start()
-        #client1.join()
-        print("done waiting for join?")
-        response = str(sock.recv(1024), 'ascii')
-        print("Received: {}".format(response),"client id:",id)
-    finally:
-        #pass
-        sock.close()
+
+        self.server.close()
+
 if __name__ == "__main__":
-    # Port 0 means to select an arbitrary unused port
-    HOST, PORT = "localhost", 0
-    server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
-    server.allow_reuse_address = True
-
-    ip, port = server.server_address
-    
-    # Start a thread with the server -- that thread will then start one
-    # more thread for each request
-    server_thread = threading.Thread(target=server.serve_forever)
-    # Exit the server thread when the main thread terminates
-    server_thread.daemon = True
-
-    server_thread.start()
-    print("Server loop running in thread:", server_thread.name)
-    #threading.Thread(target=ThreadedClient,args=(ip, port, "ME IS test2",1)
-
-    client1 = ThreadedClient(ip, port, "ME IS test",2)
-    #client1.start()
-    #lient1.join()
-    client(ip,port,"ME IS test2",1)
-    #client1.start()
-    
-    #client(ip, port, "Hello World 3",3)
-
-    server.shutdown()
+    ChatServer().serve()
