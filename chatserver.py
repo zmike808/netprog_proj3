@@ -15,10 +15,10 @@ import socket
 import sys
 import signal
 from communication import send, receive
-
+sendHistory = []
 BUFSIZ = 1024
 
-
+totalMessages = 0
 class ChatServer(object):
     """ Simple chat server using select """
     
@@ -28,6 +28,7 @@ class ChatServer(object):
         self.clientmap = {}
         # Output socket list
         self.outputs = []
+        self.usernames = dict()
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server.bind(('',port))
@@ -74,21 +75,27 @@ class ChatServer(object):
                 if s == self.server:
                     # handle the server socket
                     client, address = self.server.accept()
-                    print 'chatserver: got connection %d from %s' % (client.fileno(), address)
+                    #print 'chatserver: got connection %d from %s' % (client.fileno(), address)
                     # Read the login name
-                    cname = receive(client).split('NAME: ')[1]
+                    cname = receive(client).split('ME IS ')[1].strip("\n").lower()
+                    if not cname:
+                        send(client, "ERROR\n")
+                        continue
+                    cont = False
+                    if cname in self.usernames:
+                        send(client,"ERROR\n")
+                        continue
+                    else:
+                        self.usernames[cname] = client #keep track of usernames paired to the client id
+                    
                     
                     # Compute client name and send back
                     self.clients += 1
-                    send(client, 'CLIENT: ' + str(address[0]))
+                    #send(client, 'CLIENT: ' + str(address[0]))
                     inputs.append(client)
 
                     self.clientmap[client] = (address, cname)
-                    # Send joining information to other clients
-                    msg = '\n(Connected: New client (%d) from %s)' % (self.clients, self.getname(client))
-                    for o in self.outputs:
-                        # o.send(msg)
-                        send(o, msg)
+                    
                     
                     self.outputs.append(client)
 
@@ -101,29 +108,78 @@ class ChatServer(object):
                     try:
                         # data = s.recv(BUFSIZ)
                         data = receive(s)
+                        
                         if data:
                             # Send as new client's message...
-                            msg = '\n#[' + self.getname(s) + ']>> ' + data
-                            # Send data to all except ourselves
-                            for o in self.outputs:
-                                if o != s:
-                                    # o.send(msg)
-                                    send(o, msg)
+                            messageBody = data.split("\n")
+                            message = messageBody[0].split(" ")
+                            if message[0] == "SEND":
+                                tosend = "FROM " + message[1] + "\n"
+                                
+                                    
+                                sendHistory.append(message[1])
+                                
+                                spliced = messageBody[1:]
+                                for part in spliced:
+                                    #print(part)
+                                    part = part.strip() + "\n" #readd the \n
+                                    for x in range(2,len(message)):
+                                        send(usernames[message[x]],part)
+                                    #print(part)
+                                    #print("part0: ",part[0],"clientKey:",clientKey)
+                                    #if (part[0] == "C" and part[len(part)-1] == "\n") or (len(part) <= 3 and part[len(part)-1] == "\n" and part[0].isdigit()):
+                                        #print("owow filter worked?")
+                                        #continue
+                                    #else:
+                                        #tosend = tosend + part
+                                
+                                if len(sendHistory) == 3:
+                                    
+                            elif message[0] == "BROADCAST":
+                                tosend = "FROM " + message[1] + "\n"
+                                spliced = messageBody[1:]
+                                for part in spliced:
+                                    #print(part)
+                                    part = part.strip() + "\n" #readd the \n
+
+                                    #print(part)
+                                    #print("part0: ",part[0],"clientKey:",clientKey)
+                                    if (part[0] == "C" and part[len(part)-1] == "\n") or (len(part) <= 3 and part[len(part)-1] == "\n" and part[0].isdigit()):
+                                        #print("owow filter worked?")
+                                        continue
+                                    else:
+                                        tosend = tosend + part
+                                for key in usernames:
+                                    send(usernames[key],tosend)
+                            elif message[0] == "WHO" and message[1] == "HERE":
+                                whohere = ""
+                                for key in usernames:
+                                    whohere = whowhere + key + "\n"
+                                send(usernames[message[2]],whohere)
+                            elif message[0] == "LOGOUT":
+                                self.clients -= 1
+                                s.close()
+                                inputs.remove(s)
+                                self.outputs.remove(s)
+                                del self.usernames[message[1]]
                         else:
-                            print 'chatserver: %d hung up' % s.fileno()
+                            #print 'chatserver: %d hung up' % s.fileno()
                             self.clients -= 1
+                            for key,value in usernames:
+                                if value == s:
+                                    del usernames[key]
                             s.close()
                             inputs.remove(s)
                             self.outputs.remove(s)
-
-                            # Send client leaving information to others
-                            msg = '\n(Hung up: Client from %s)' % self.getname(s)
-                            for o in self.outputs:
-                                # o.send(msg)
-                                send(o, msg)
+                            
+                                    
+                            
                                 
                     except socket.error, e:
                         # Remove
+                        for key,value in usernames:
+                                if value == s:
+                                    del usernames[key]
                         inputs.remove(s)
                         self.outputs.remove(s)
                         
