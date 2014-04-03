@@ -16,7 +16,7 @@ import sys
 import signal
 from communication import send, receive
 sendHistory = []
-BUFSIZ = 1024
+BUFSIZE = 1024
 
 totalMessages = 0
 class ChatServer(object):
@@ -75,19 +75,30 @@ class ChatServer(object):
                 if s == self.server:
                     # handle the server socket
                     client, address = self.server.accept()
-                    #print 'chatserver: got connection %d from %s' % (client.fileno(), address)
+                    print 'chatserver: got connection %d from %s' % (client.fileno(), address)
                     # Read the login name
-                    cname = receive(client).split('ME IS ')[1].strip("\n").lower()
-                    if not cname:
-                        send(client, "ERROR\n")
+                    #try:
+                    cname = client.receive(BUFSIZE)#.split('ME IS ')[1].strip("\n").lower()
+                    split = cname.split(" ")
+                    if split[0] == "ME" and split[1] == "IS" and len(split) == 3:
+                        cname = split[2].strip("\n")
+                        cname = cname.lower()
+                    else:
+                        client.send("ERROR\n")
+                        #print cname
+                    #except:
+                        #cname = ""
+                    if cname == "":
+                        client.send("ERROR\n")
                         continue
-                    cont = False
+                    
                     if cname in self.usernames:
-                        send(client,"ERROR\n")
+                        client.send("ERROR\n")
                         continue
                     else:
                         self.usernames[cname] = client #keep track of usernames paired to the client id
-                    
+                        print "cname is: ", cname
+                        client.send("OK\n")
                     
                     # Compute client name and send back
                     self.clients += 1
@@ -133,7 +144,7 @@ class ChatServer(object):
                                     #else:
                                         #tosend = tosend + part
                                 
-                                if len(sendHistory) == 3:
+                                #if len(sendHistory) == 3:
                                     
                             elif message[0] == "BROADCAST":
                                 tosend = "FROM " + message[1] + "\n"
