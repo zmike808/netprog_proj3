@@ -116,7 +116,7 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
 class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
-
+#not part of the project, just some blackmagic i was trying to conjure so i could test 2 clients at 1 time in 1 instance of python, alas python's black magic is just not that strong
 class ThreadedClient(threading.Thread):
     def __init__(self,ip, port, message,id):
         super(ThreadedClient,self).__init__()
@@ -144,6 +144,7 @@ class ThreadedClient(threading.Thread):
             #pass
             sock.close()
 client1 = None
+#see threadedclient explaination
 def client(ip,port,message,id):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect((ip, port))
@@ -163,7 +164,6 @@ def client(ip,port,message,id):
 if __name__ == "__main__":
     # Port 0 means to select an arbitrary unused port
     HOST, PORT = "localhost", 0
-    socketserver.threading
     server = ThreadedTCPServer((HOST, PORT), ThreadedTCPRequestHandler)
     server.allow_reuse_address = True
 
