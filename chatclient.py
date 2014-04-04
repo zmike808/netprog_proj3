@@ -60,8 +60,8 @@ class ChatClient(object):
                         data = sys.stdin.readline()
                         if data: 
                             #print "before sendall", data
-                            testmessage = "WHO HERE test"#"BROADCAST test\ntesting\nomgplswork\n"
-                            self.sock.sendall(testmessage)
+                            #testmessage = "WHO HERE test"#"BROADCAST test\ntesting\nomgplswork\n"
+                            self.sock.sendall(data)
                     elif i == self.sock:
                         data = self.sock.recv(BUFSIZE)
                         if not data:
