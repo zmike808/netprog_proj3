@@ -98,8 +98,10 @@ class ChatServer(object):
                     print 'chatserver: got connection %d from %s' % (client.fileno(), address)
                     # Read the login name
                     try:
+                        
                         cname = client.recv(BUFSIZE)#.split('ME IS ')[1].strip("\n").lower()
                         split = cname.split(" ")
+                        #print cname
                         if split[0] == "ME" and split[1] == "IS" and len(split) == 3:
                             cname = split[2].strip("\n")
                             cname = cname.lower()
@@ -150,7 +152,7 @@ class ChatServer(object):
                                 tosend = "FROM " + message[1] + "\n"                       
                                 spliced = messageBody[1:]
                                 if verbose:
-                                    print "RCVD from",message[1],"(",message[1].gethostname(),"):"
+                                    print "RCVD from",message[1],"(",(self.usernames[message[1]]).getsockname(),"):"
                                     for msg in messageBody:
                                         print msg
                                 wholeMsg = ""
@@ -159,14 +161,14 @@ class ChatServer(object):
                                     part = part.strip() + "\n" #readd the \n
                                     wholeMsg = wholeMsg + part
                                     for x in range(2,len(message)):
-                                        self.usernames[message[x]].sendall(part)
+                                        self.usernames[message[x]].send(part)
                                         self.sendHistory[message[x]].append(message[1])
                                         if len(self.sendHistory[message[x]]) == 3:
                                             rMessage = randomMessage[random.randint(0,12)]
                                             rFrom = (self.sendHistory[message[x]])[random.randint(0,2)]
                                             msgSent = "FROM "+rFrom+"\n"+len(rMessage)+"\n"+rMessage
                                             if verbose:
-                                                print "SENT (randomly!) TO",+message[x],"(",message[x].gethostname(),"):"
+                                                print "SENT (randomly!) TO",+message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
                                                 print msgSent
                                             self.usernames[message[x]].sendall(msgSent)
                                             self.sendHistory[message[x]] = []
@@ -179,7 +181,7 @@ class ChatServer(object):
                                         #tosend = tosend + part
                                 if verbose:
                                     for x in range(2,len(message)):
-                                        print "SENT to",message[x],"(",message[x].gethostname(),"):"
+                                        print "SENT to",message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
                                         print wholeMsg
                             elif message[0] == "BROADCAST":
                                 tosend = "FROM " + message[1] + "\n"
@@ -198,7 +200,7 @@ class ChatServer(object):
                                             rFrom = (self.sendHistory[key])[random.randint(0,2)]
                                             msgSent = msgSent = "FROM "+rFrom+"\n"+len(rMessage)+"\n"+rMessage
                                             if verbose:
-                                                print "SENT (randomly!) TO",+message[x],"(",message[x].gethostname(),"):"
+                                                print "SENT (randomly!) TO",+message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
                                                 print msgSent
                                             self.usernames[key].sendall(msgSent)
                                             self.sendHistory[key] = []
@@ -211,7 +213,7 @@ class ChatServer(object):
                                         #tosend = tosend + part
                                 if verbose:
                                     for key in self.usernames:
-                                        print "SENT to",message[x],"(",message[x].gethostname(),"):"
+                                        print "SENT to",message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
                                         print wholeMsg
                             elif message[0] == "WHO" and message[1] == "HERE":
                                 whohere = ""
@@ -220,7 +222,7 @@ class ChatServer(object):
                                     whohere = whohere + key + "\n"
                                 self.usernames[message[2]].send(whohere)
                                 if verbose:
-                                    print "RCVD from",message[2],"(",message[2].gethostname(),"):"
+                                    print "RCVD from",message[2],"(",(self.usernames[message[2]]).getsockname(),"):"
                                     print whohere
                             elif message[0] == "LOGOUT":
                                 self.clients -= 1
