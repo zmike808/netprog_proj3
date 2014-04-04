@@ -37,6 +37,7 @@ class ChatServer(object):
             print sys.argv
             exit()
         for p in port:
+            #print p
             p = int(p)
             server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             serverUDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -132,6 +133,7 @@ class ChatServer(object):
                     # handle all other sockets
                     try:
                         if s.type == socket.DGRAM:
+                            pass
                         else:
                             data = s.recv(BUFSIZE)
                             #data = s.recv
@@ -256,4 +258,6 @@ if __name__ == "__main__":
     if "-v" in args:
         verbose = True
         args.remove("-v")
-    ChatServer().serve()
+    print args
+    chatserver = ChatServer(port=args[1:])
+    chatserver.serve()
