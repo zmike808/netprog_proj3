@@ -12,14 +12,13 @@ a simple protocol to be used with chatserver.
 import socket
 import sys
 import select
-from communication import send, receive
 
-BUFSIZ = 1024
+BUFSIZE = 8192
 
 class ChatClient(object):
     """ A simple command line chat client using select """
 
-    def __init__(self, name, host='127.0.0.1', port=3490):
+    def __init__(self, name, host='198.23.178.34', port=3490):
         self.name = name
         # Quit flag
         self.flag = False
@@ -33,11 +32,15 @@ class ChatClient(object):
             self.sock.connect((host, self.port))
             print 'Connected to chat server@%d' % self.port
             # Send my name...
-            send(self.sock,'NAME: ' + self.name) 
-            data = receive(self.sock)
+            self.sock.sendall('ME IS ' + self.name) 
+            data = self.sock.recv(BUFSIZE)
+            print data
+            if(data != "OK\n"):
+                print "DATA MISMATCH?????",data
+            
             # Contains client address, set it
-            addr = data.split('CLIENT: ')[1]
-            self.prompt = '[' + '@'.join((self.name, addr)) + ']> '
+            #addr = data.split('CLIENT: ')[1]
+            #self.prompt = '[' + '@'.join((self.name, addr)) + ']> '
         except socket.error, e:
             print 'Could not connect to chat server @%d' % self.port
             sys.exit(1)
@@ -54,16 +57,20 @@ class ChatClient(object):
                 
                 for i in inputready:
                     if i == 0:
-                        data = sys.stdin.readline().strip()
-                        if data: send(self.sock, data)
+                        data = sys.stdin.readline()
+                        if data: 
+                            #print "before sendall", data
+                            testmessage = "WHO HERE test"#"BROADCAST test\ntesting\nomgplswork\n"
+                            self.sock.sendall(testmessage)
                     elif i == self.sock:
-                        data = receive(self.sock)
+                        data = self.sock.recv(BUFSIZE)
                         if not data:
                             print 'Shutting down.'
                             self.flag = True
                             break
                         else:
-                            sys.stdout.write(data + '\n')
+                            #print "data in else/write??", data
+                            sys.stdout.write(data)
                             sys.stdout.flush()
                             
             except KeyboardInterrupt:

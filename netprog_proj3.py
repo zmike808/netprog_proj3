@@ -123,8 +123,8 @@ class ChatServer(object):
                             # Send as new client's message...
                             messageBody = data.split("\n")
                             message = messageBody[0].split(" ")
-                            print message
-                            print messageBody
+                            #print "split with spaces",message
+                            #print "split by \\n",messageBody
                             if message[0] == "SEND":
                                 tosend = "FROM " + message[1] + "\n"
                                 
@@ -179,9 +179,9 @@ class ChatServer(object):
                         else:
                             #print 'chatserver: %d hung up' % s.fileno()
                             self.clients -= 1
-                            for key,value in usernames:
+                            for key,value in self.usernames.items():
                                 if value == s:
-                                    del usernames[key]
+                                    del self.usernames[key]
                             s.close()
                             inputs.remove(s)
                             self.outputs.remove(s)
@@ -191,9 +191,9 @@ class ChatServer(object):
                                 
                     except socket.error, e:
                         # Remove
-                        for key,value in usernames:
+                        for key,value in self.usernames.items():
                                 if value == s:
-                                    del usernames[key]
+                                    del self.usernames[key]
                         inputs.remove(s)
                         self.outputs.remove(s)
                         
