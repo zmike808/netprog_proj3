@@ -32,12 +32,24 @@ class ChatClient(object):
             self.sock.connect((host, self.port))
             print 'Connected to chat server@%d' % self.port
             # Send my name...
-            self.sock.sendall('ME IS ' + self.name) 
+            self.sock.sendall("ME IS " + self.name + "\n") 
             data = self.sock.recv(BUFSIZE)
             print data
             if(data != "OK\n"):
                 print "DATA MISMATCH?????",data
-            
+            while True:
+                input = ""
+                #print input
+                tosend = ""
+                while input != "ENDNOW":
+                    input = sys.stdin.readline().strip()
+                    tosend = tosend + input + "\n"
+                print "SENDING TO SERVER:"
+                print tosend
+                self.sock.sendall(tosend)
+                reply = self.sock.recv(BUFSIZE)
+                print "RECEIVED FROM SERVER:"
+                print reply
             # Contains client address, set it
             #addr = data.split('CLIENT: ')[1]
             #self.prompt = '[' + '@'.join((self.name, addr)) + ']> '
@@ -86,5 +98,5 @@ if __name__ == "__main__":
         sys.exit('Usage: %s chatid host portno' % sys.argv[0])
         
     client = ChatClient(sys.argv[1],sys.argv[2], int(sys.argv[3]))
-    client.cmdloop()
+    #client.cmdloop()
 

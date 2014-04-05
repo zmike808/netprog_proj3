@@ -16,7 +16,7 @@ import sys
 from collections import defaultdict
 import signal
 import random
-sendHistory = dict()
+#sendHistory = dict()
 verbose = False
 BUFSIZE = 8192
 randomMessages = ["Hey, you're kinda hot","No way!","I like Justin Bieber....a lot","yo","dawg","wutt","inda","bawt","GGWP","python2good","plznerf","pythonSOEZ","GODBLESS-NO_CSTRINGS_EZMODE"]
@@ -32,7 +32,7 @@ class ChatServer(object):
         self.outputs = []
         self.usernames = dict()
         self.serverList = []
-        self.sendHistory = defaultdict(list)
+        self.sendHistory = dict()
         if len(port) < 1:
             print sys.argv
             exit()
@@ -69,11 +69,11 @@ class ChatServer(object):
     def serve(self):
         
         inputs = []
-        print self.serverList
+        #print self.serverList
         for x in self.serverList:
             inputs.append(x)
         self.outputs = []
-
+        
         running = 1
 
         while running:
@@ -84,11 +84,11 @@ class ChatServer(object):
                 break
             except socket.error, e:
                 break
-
+            
             for s in inputready:
-
+                
                 if s in self.serverList:
-                    print "socket id:",s
+                    print "socket id:",s.fileno()
                     #if s.type == socket.DGRAM:
                         #addrInfo = socket.getnameinfo(s)
                         #pass
@@ -118,6 +118,8 @@ class ChatServer(object):
                         break
                     else:
                         self.usernames[cname] = client #keep track of usernames paired to the client id
+                        self.sendHistory[cname] = []
+                        #self.outputs = client
                         #print "cname is: ", cname
                         client.sendall("OK\n")
                     
@@ -140,14 +142,14 @@ class ChatServer(object):
                     try:
                         data = s.recv(BUFSIZE)
                         #data = s.recv
-                        print data
+                        #print data
                         
                         if data:
                             # Send as new client's message...
                             messageBody = data.split("\n")
                             message = messageBody[0].split(" ")
-                            #print "split with spaces",message
-                            #print "split by \\n",messageBody
+                            print "split with spaces",message
+                            print "split by \\n",messageBody
                             if message[0] == "SEND":
                                 tosend = "FROM " + message[1] + "\n"                       
                                 spliced = messageBody[1:]
@@ -162,16 +164,7 @@ class ChatServer(object):
                                     wholeMsg = wholeMsg + part
                                     for x in range(2,len(message)):
                                         self.usernames[message[x]].send(part)
-                                        self.sendHistory[message[x]].append(message[1])
-                                        if len(self.sendHistory[message[x]]) == 3:
-                                            rMessage = randomMessage[random.randint(0,12)]
-                                            rFrom = (self.sendHistory[message[x]])[random.randint(0,2)]
-                                            msgSent = "FROM "+rFrom+"\n"+len(rMessage)+"\n"+rMessage
-                                            if verbose:
-                                                print "SENT (randomly!) TO",+message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
-                                                print msgSent
-                                            self.usernames[message[x]].sendall(msgSent)
-                                            self.sendHistory[message[x]] = []
+                                        
                                     #print(part)
                                     #print("part0: ",part[0],"clientKey:",clientKey)
                                     #if (part[0] == "C" and part[len(part)-1] == "\n") or (len(part) <= 3 and part[len(part)-1] == "\n" and part[0].isdigit()):
@@ -179,11 +172,24 @@ class ChatServer(object):
                                         #continue
                                     #else:
                                         #tosend = tosend + part
-                                if verbose:
-                                    for x in range(2,len(message)):
+                                
+                                for x in range(2,len(message)):
+                                    self.sendHistory[message[x]].append(message[1])
+                                    if len(self.sendHistory[message[x]]) == 3:
+                                        rMessage = randomMessages[random.randint(0,12)]
+                                        rFrom = (self.sendHistory[message[x]])[random.randint(0,2)]
+                                        msgSent = "FROM "+rFrom+"\n"+len(rMessage)+"\n"+rMessage
+                                        if verbose:
+                                            print "SENT (randomly!) TO",message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
+                                            print msgSent
+                                        self.usernames[message[x]].sendall(msgSent)
+                                        self.sendHistory[message[x]] = []
+                                    if verbose:
                                         print "SENT to",message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
                                         print wholeMsg
                             elif message[0] == "BROADCAST":
+                                #print outputready
+                                
                                 tosend = "FROM " + message[1] + "\n"
                                 spliced = messageBody[1:]
                                 wholeMsg = ""
@@ -193,17 +199,11 @@ class ChatServer(object):
                                     print part
                                     wholeMsg = wholeMsg + part
                                     for key in self.usernames:
-                                        self.usernames[key].send(part)
-                                        self.sendHistory[key].append(message[1])
-                                        if len(self.sendHistory[key]) == 3:
-                                            rMessage = randomMessage[random.randint(0,12)]
-                                            rFrom = (self.sendHistory[key])[random.randint(0,2)]
-                                            msgSent = msgSent = "FROM "+rFrom+"\n"+len(rMessage)+"\n"+rMessage
-                                            if verbose:
-                                                print "SENT (randomly!) TO",+message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
-                                                print msgSent
-                                            self.usernames[key].sendall(msgSent)
-                                            self.sendHistory[key] = []
+                                        print "sending to",key,"which is socket: ",self.usernames[key].fileno()
+                                        print part
+                                        bytesSent = self.usernames[key].send(part)
+                                        print bytesSent
+                                        
                                     #print(part)
                                     #print("part0: ",part[0],"clientKey:",clientKey)
                                     #if (part[0] == "C" and part[len(part)-1] == "\n") or (len(part) <= 3 and part[len(part)-1] == "\n" and part[0].isdigit()):
@@ -211,9 +211,20 @@ class ChatServer(object):
                                         #continue
                                     #else:
                                         #tosend = tosend + part
-                                if verbose:
-                                    for key in self.usernames:
-                                        print "SENT to",message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
+                                
+                                for key in self.usernames:
+                                    self.sendHistory[key].append(message[1])
+                                    if len(self.sendHistory[key]) == 3:
+                                        rMessage = randomMessages[random.randint(0,12)]
+                                        rFrom = (self.sendHistory[key])[random.randint(0,2)]
+                                        msgSent = msgSent = "FROM "+rFrom+"\n"+len(rMessage)+"\n"+rMessage
+                                        if verbose:
+                                            print "SENT (randomly!) TO",key,"(",(self.usernames[key]).getsockname(),"):"
+                                            print msgSent
+                                        self.usernames[key].sendall(msgSent)
+                                        self.sendHistory[key] = []
+                                    if verbose:
+                                        print "SENT to",key,"(",(self.usernames[key]).getsockname(),"):"
                                         print wholeMsg
                             elif message[0] == "WHO" and message[1] == "HERE":
                                 whohere = ""
@@ -227,6 +238,7 @@ class ChatServer(object):
                             elif message[0] == "LOGOUT":
                                 self.clients -= 1
                                 del self.usernames[message[1]]
+                                del self.sendHistory[message[1]]
                                 s.close()
                                 inputs.remove(s)
                                 self.outputs.remove(s)
@@ -236,6 +248,7 @@ class ChatServer(object):
                             self.clients -= 1
                             for key,value in self.usernames.items():
                                 if value == s:
+                                    del self.sendHistory[key]
                                     del self.usernames[key]
                             s.close()
                             inputs.remove(s)
