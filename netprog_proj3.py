@@ -164,10 +164,10 @@ class ChatServer(object):
                                     if not invalid:
                                         nextchunk = s.recv(int(chunk[1:]))
                                         while not foundlastchunk:                                           
-                                           print nextchunk
+                                           #print nextchunk
                                            data = data + nextchunk
                                            check = nextchunk.split("\n")
-                                           print check
+                                           #print check
                                            getyourchunkon = check[-1].strip()
                                            if "C0" == getyourchunkon: #logically, if we're already chunking, the last chunk has to be c0, or some other chunk size, cause we still getting mad chunky in here
                                                foundlastchunk = True
