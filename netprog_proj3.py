@@ -151,8 +151,9 @@ class ChatServer(object):
                             # Send as new client's message...
                             chunkcount = 0
                             chunky = data.split("\n")
+                            #print chunky
                             foundlastchunk = False
-                            chunk = chunky[-1]
+                            chunk = chunky[-2]
                             chunk = chunk.strip()
                             if len(chunk) <= 4 and chunk[0] == "C" and chunk != "C0":
                                 invalid = False
