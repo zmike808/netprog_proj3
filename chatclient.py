@@ -38,7 +38,7 @@ class ChatClient(object):
             if(data != "OK\n"):
                 print "DATA MISMATCH?????",data
             while True:
-                self.sock.sendall("BROADCAST test\nC10\n") 
+                #self.sock.sendall("BROADCAST test\nC10\n") 
                 input = sys.stdin.readline().strip()
                 #print input
                 tosend = ""
