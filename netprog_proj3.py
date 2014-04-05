@@ -121,28 +121,32 @@ class ChatServer(object):
                                 for x in range(2,len(message)):
                                     if message[x] in self.udpclients:
                                         tosend = "FROM " + message[1] + "\n"   
-                                        s.sendto(tosend,self.udpclients[message[x]])
+                                        #s.sendto(tosend,self.udpclients[message[x]])
                                         spliced = messageBody[1:]
                                         wholeMsg = ""
+                                        sendmsg = tosend
                                         for part in spliced:
                                             #print(part)
                                             part = part.strip() + "\n" #readd the \n
                                             wholeMsg = wholeMsg + part
-                                            s.sendto(part,self.udpclients[message[x]])
+                                            sendmsg = sendmsg + part
+                                        s.sendto(sendmsg,self.udpclients[message[x]])
                                         if verbose:
                                             print "SENT to",message[x],"(",(self.udpclients[message[x]])[0],"):"
                                             print wholeMsg
                                     elif message[x] in self.usernames:
                                         tosend = "FROM " + message[1] + "\n"   
-                                        self.usernames[message[x]].send(tosend)
+                                        sendmsg = tosend
+                                        #self.usernames[message[x]].send(tosend)
                                         spliced = messageBody[1:]
                                         wholeMsg = ""
                                         for part in spliced:
                                             #print(part)
                                             part = part.strip() + "\n" #readd the \n
                                             wholeMsg = wholeMsg + part
-                                            self.usernames[message[x]].send(part)                                       
-                                        
+                                            sendmsg = sendmsg + part
+                                            #self.usernames[message[x]].send(part)                                       
+                                        self.usernames[message[x]].sendall(sendmsg)
                                         self.sendHistory[message[x]].append(message[1])
                                         if len(self.sendHistory[message[x]]) == 3:
                                             rMessage = randomMessages[random.randint(0,12)]
@@ -158,24 +162,27 @@ class ChatServer(object):
                                             print wholeMsg
                             elif message[0] == "BROADCAST" and len(message) == 2:                                
                                 tosend = "FROM " + message[1] + "\n"
+                                sendmsg = tosend
                                 if verbose:
                                     if message[1] in self.udpclients:
                                         print "RCVD from",message[1],"(",(self.udpclients[message[1]])[0],"):"
                                         for temp in messageBody:
                                             print temp
-                                for key in self.usernames:
-                                    bytesSent = self.usernames[key].send(tosend)
-                                for key in self.udpclients:
-                                    s.sendto(tosend,self.udpclients[key])
+                                #for key in self.usernames:
+                                    #bytesSent = self.usernames[key].send(tosend)
+                                #for key in self.udpclients:
+                                    #s.sendto(tosend,self.udpclients[key])
                                 spliced = messageBody[1:]
                                 wholeMsg = ""
                                 for part in spliced:
                                     part = part.strip() + "\n" #readd the \n
                                     wholeMsg = wholeMsg + part
-                                    for key in self.usernames:
-                                        bytesSent = self.usernames[key].send(part)
-                                    for key in self.udpclients:
-                                        s.sendto(part,self.udpclients[key])
+                                    sendmsg = sendmsg + part
+                                    
+                                for key in self.usernames:
+                                    bytesSent = self.usernames[key].sendall(sendmsg)
+                                for key in self.udpclients:
+                                    s.sendto(sendmsg,self.udpclients[key])
                                 for key in self.usernames:
                                     self.sendHistory[key].append(message[1])
                                     if len(self.sendHistory[key]) == 3:
@@ -304,55 +311,75 @@ class ChatServer(object):
                             if message[0] == "SEND" and len(message) >= 3:
                                 tosend = "FROM " + message[1] + "\n"   
                                 for x in range(2,len(message)):
+                                    sendmsg = tosend
                                     if message[x] in self.usernames:
-                                        self.usernames[message[x]].send(tosend)
-                                spliced = messageBody[1:]
-                                if verbose:
-                                    if message[1] in self.usernames:
-                                        print "RCVD from",message[1],"(",(self.usernames[message[1]]).getsockname(),"):"
-                                        for msg in messageBody:
-                                            print msg
-                                wholeMsg = ""
-                                for part in spliced:
-                                    #print(part)
-                                    part = part.strip() + "\n" #readd the \n
-                                    wholeMsg = wholeMsg + part
-                                    for x in range(2,len(message)):
-                                        if message[x] in self.usernames:
-                                            self.usernames[message[x]].send(part)                                       
-                                
-                                for x in range(2,len(message)):
-                                    if message[x] in self.usernames:
-                                        self.sendHistory[message[x]].append(message[1])
-                                        if len(self.sendHistory[message[x]]) == 3:
-                                            rMessage = randomMessages[random.randint(0,12)]
-                                            rFrom = (self.sendHistory[message[x]])[random.randint(0,2)]
-                                            msgSent = "FROM "+rFrom+"\n"+str(len(rMessage))+"\n"+rMessage
-                                            if verbose:
-                                                print "SENT (randomly!) TO",message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
-                                                print msgSent
-                                            self.usernames[message[x]].sendall(msgSent)
-                                            self.sendHistory[message[x]] = []
+                                        spliced = messageBody[1:]
                                         if verbose:
-                                            print "SENT to",message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
+                                            if message[1] in self.usernames:
+                                                print "RCVD from",message[1],"(",(self.usernames[message[1]]).getsockname(),"):"
+                                                for msg in messageBody:
+                                                    print msg
+                                        wholeMsg = ""
+                                        for part in spliced:
+                                            #print(part)
+                                            part = part.strip() + "\n" #readd the \n
+                                            wholeMsg = wholeMsg + part
+                                            sendmsg = sendmsg + part
+                                                                                    
+                                        self.usernames[message[x]].sendall(sendmsg)       
+                                        
+                                        if message[x] in self.usernames:
+                                            self.sendHistory[message[x]].append(message[1])
+                                            if len(self.sendHistory[message[x]]) == 3:
+                                                rMessage = randomMessages[random.randint(0,12)]
+                                                rFrom = (self.sendHistory[message[x]])[random.randint(0,2)]
+                                                msgSent = "FROM "+rFrom+"\n"+str(len(rMessage))+"\n"+rMessage
+                                                if verbose:
+                                                    print "SENT (randomly!) TO",message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
+                                                    print msgSent
+                                                self.usernames[message[x]].sendall(msgSent)
+                                                self.sendHistory[message[x]] = []
+                                            if verbose:
+                                                print "SENT to",message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
+                                                print wholeMsg
+                                    elif message[x] in self.udpclients:
+                                        tosend = "FROM " + message[1] + "\n"   
+                                        #s.sendto(tosend,self.udpclients[message[x]])
+                                        spliced = messageBody[1:]
+                                        wholeMsg = ""
+                                        sendmsg = tosend
+                                        for part in spliced:
+                                            #print(part)
+                                            part = part.strip() + "\n" #readd the \n
+                                            wholeMsg = wholeMsg + part
+                                            sendmsg = sendmsg + part
+                                        s.sendto(sendmsg,self.udpclients[message[x]])
+                                        if verbose:
+                                            print "SENT to",message[x],"(",(self.udpclients[message[x]])[0],"):"
                                             print wholeMsg
+
                             elif message[0] == "BROADCAST" and len(message) == 2:                                
                                 tosend = "FROM " + message[1] + "\n"
+                                sendmsg = tosend
                                 if verbose:
                                     if message[1] in self.usernames:
                                         print "RCVD from",message[1],"(",(self.usernames[message[1]]).getsockname(),"):"
                                         for msg in messageBody:
                                             print msg
-                                for key in self.usernames:
-                                    bytesSent = self.usernames[key].send(tosend)
+                                #for key in self.usernames:
+                                    #bytesSent = self.usernames[key].send(tosend)
                                 spliced = messageBody[1:]
                                 wholeMsg = ""
                                 for part in spliced:
                                     part = part.strip() + "\n" #readd the \n
                                     wholeMsg = wholeMsg + part
-                                    for key in self.usernames:
-                                        bytesSent = self.usernames[key].send(part)
-                                
+                                    sendmsg = sendmsg + part
+                                    #for key in self.usernames:
+                                        #bytesSent = self.usernames[key].send(part)
+                                for key in self.usernames:
+                                    self.usernames[key].sendall(sendmsg)
+                                for key in self.udpclients:
+                                    s.sendto(sendmsg,self.udpclients[key])
                                 for key in self.usernames:
                                     self.sendHistory[key].append(message[1])
                                     if len(self.sendHistory[key]) == 3:
@@ -371,7 +398,9 @@ class ChatServer(object):
                                 whohere = ""                                
                                 for key in self.usernames:
                                     whohere = whohere + key + "\n"
-                                self.usernames[message[2]].send(whohere)
+                                for key in self.udpclients:
+                                    whohere = whohere + key + "\n"
+                                self.usernames[message[2]].sendall(whohere)
                                 if verbose:
                                     print "RCVD from",message[2],"(",(self.usernames[message[2]]).getsockname(),"):"
                                     print whohere
