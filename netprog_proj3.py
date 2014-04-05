@@ -45,6 +45,7 @@ class ChatServer(object):
             serverUDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             server.bind(('',p))
+            serverUDP.bind(('',p))
             #print 'Listening to port',p,'...'
             server.listen(backlog)
             self.serverList.append(server)
@@ -99,15 +100,21 @@ class ChatServer(object):
                     #else:
                     cname = None
                     address = None
+                    #print s
+                    #print self.udps
                         # handle the server socket
                     if s in self.udps:
-                        msg, address = s.recv(99)
+                        #print "s in udps?"
+                        msg, address = s.recvfrom(99)
                         split = msg.split(" ")
                         if split[0] == "ME" and split[1] == "IS" and len(split) == 3:
                             udpname = split[2].strip("\n")
                             udpname = udpname.lower()
-                            self.udpclients[udpname] = address
-                            s.sendto("OK\n",address)
+                            if udpname in self.udpclients:
+                                s.sendto("ERROR\n",address)
+                            else:
+                                self.udpclients[udpname] = address
+                                s.sendto("OK\n",address)
                         else:
                             #for key,value in self.udpclients.items():
                             messageBody = msg.split("\n")
@@ -116,7 +123,7 @@ class ChatServer(object):
                             #print "split by \\n",messageBody
                             if message[0] == "SEND" and len(message) == 3:
                                 if verbose:
-                                    if message[1] in self.udpclients
+                                    if message[1] in self.udpclients:
                                         print "RCVD from",message[1],"(",(self.udpclients[message[1]])[0],"):"
                                         for temp in messageBody:
                                             print temp
@@ -218,42 +225,42 @@ class ChatServer(object):
                     
                     #print 'chatserver: got connection %d from %s' % (client.fileno(), address)
                     # Read the login name
-                    try:
+                        try:
+                            
+                            cname = client.recv(BUFSIZE)#.split('ME IS ')[1].strip("\n").lower()
+                            split = cname.split(" ")
+                            #client.setblocking(0)
+                            #print cname
+                            if split[0] == "ME" and split[1] == "IS" and len(split) == 3:
+                                cname = split[2].strip("\n")
+                                cname = cname.lower()
+                            else:
+                                client.sendall("ERROR\n")
+                                break
+                                #print cname
+                        except:
+                            break
+                                              
                         
-                        cname = client.recv(BUFSIZE)#.split('ME IS ')[1].strip("\n").lower()
-                        split = cname.split(" ")
-                        #client.setblocking(0)
-                        #print cname
-                        if split[0] == "ME" and split[1] == "IS" and len(split) == 3:
-                            cname = split[2].strip("\n")
-                            cname = cname.lower()
-                        else:
+                        if cname in self.usernames:
                             client.sendall("ERROR\n")
                             break
-                            #print cname
-                    except:
-                        break
-                                          
-                    
-                    if cname in self.usernames:
-                        client.sendall("ERROR\n")
-                        break
-                    else:
-                        self.usernames[cname] = client #keep track of usernames paired to the client id
-                        self.sendHistory[cname] = []
-                        #self.outputs = client
-                        #print "cname is: ", cname
-                        client.sendall("OK\n")
-                    
-                    # Compute client name and send back
-                    self.clients += 1
-                    #send(client, 'CLIENT: ' + str(address[0]))
-                    inputs.append(client)
+                        else:
+                            self.usernames[cname] = client #keep track of usernames paired to the client id
+                            self.sendHistory[cname] = []
+                            #self.outputs = client
+                            #print "cname is: ", cname
+                            client.sendall("OK\n")
+                        
+                        # Compute client name and send back
+                        self.clients += 1
+                        #send(client, 'CLIENT: ' + str(address[0]))
+                        inputs.append(client)
 
-                    self.clientmap[client] = (address, cname)
-                    
-                    
-                    self.outputs.append(client)
+                        self.clientmap[client] = (address, cname)
+                        
+                        
+                        self.outputs.append(client)
 
                 elif s == sys.stdin:
                     # handle standard input

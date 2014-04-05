@@ -28,12 +28,13 @@ class ChatClient(object):
         self.prompt='[' + '@'.join((name, socket.gethostname().split('.')[0])) + ']> '
         # Connect to server at port
         try:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.connect((host, self.port))
-            print 'Connected to chat server@%d' % self.port
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            #self.sock.connect()
+            #print 'Connected to chat server@%d' % self.port
             # Send my name...
-            self.sock.sendall("ME IS " + self.name + "\n") 
-            data = self.sock.recv(BUFSIZE)
+            addy =(host, self.port)
+            self.sock.sendto("ME IS " + self.name + "\n",(host, self.port)) 
+            data,adddy = self.sock.recvfrom(BUFSIZE)
             print data
             if(data != "OK\n"):
                 print "DATA MISMATCH?????",data
@@ -48,10 +49,11 @@ class ChatClient(object):
                     
                 print "SENDING TO SERVER:"
                 print tosend
-                self.sock.sendall(tosend)
-                reply = self.sock.recv(BUFSIZE)
+                self.sock.sendto(tosend,addy)
+                reply,addyy = self.sock.recvfrom(BUFSIZE)
                 print "RECEIVED FROM SERVER:"
                 print reply
+                #print addyy
             # Contains client address, set it
             #addr = data.split('CLIENT: ')[1]
             #self.prompt = '[' + '@'.join((self.name, addr)) + ']> '
