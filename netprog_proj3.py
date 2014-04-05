@@ -95,12 +95,14 @@ class ChatServer(object):
                     #else:
                         # handle the server socket
                     client, address = s.accept()
+                    
                     print 'chatserver: got connection %d from %s' % (client.fileno(), address)
                     # Read the login name
                     try:
                         
                         cname = client.recv(BUFSIZE)#.split('ME IS ')[1].strip("\n").lower()
                         split = cname.split(" ")
+                        #client.setblocking(0)
                         #print cname
                         if split[0] == "ME" and split[1] == "IS" and len(split) == 3:
                             cname = split[2].strip("\n")
@@ -141,17 +143,48 @@ class ChatServer(object):
                     # handle all other sockets
                     try:
                         data = s.recv(BUFSIZE)
+                        
                         #data = s.recv
                         #print data
                         
                         if data:
                             # Send as new client's message...
+                            chunkcount = 0
+                            chunky = data.split("\n")
+                            foundlastchunk = False
+                            chunk = chunky[-1]
+                            chunk = chunk.strip()
+                            if len(chunk) <= 4 and chunk[0] == "C" and chunk != "C0":
+                                invalid = False
+                                for verify in chunk[1:]:
+                                    if not verify.isdigit():
+                                        invalid = True
+                                        break
+                                    if not invalid:
+                                        nextchunk = s.recv(int(chunk[1:]))
+                                        while not foundlastchunk:                                           
+                                           print nextchunk
+                                           data = data + nextchunk
+                                           check = nextchunk.split("\n")
+                                           getyourchunkon = check[-1].strip()
+                                           if "C0" == getyourchunkon: #logically, if we're already chunking, the last chunk has to be c0, or some other chunk size, cause we still getting mad chunky in here
+                                               foundlastchunk = True
+                                               break
+                                           else:
+                                               try:
+                                                   nextchunk = s.recv(int(getyourchunkon[1:]))
+                                               except:
+                                                   print "if your gona get your chunk on, you gotta do it right man. why you gotta be like that? if your gona start chunkin, you gotta end with dat C0, sneaky guy, ya know what, just for that now you gotta go and restart the whole program."
+                                                   exit()
+                            
                             messageBody = data.split("\n")
                             message = messageBody[0].split(" ")
                             print "split with spaces",message
                             print "split by \\n",messageBody
                             if message[0] == "SEND":
-                                tosend = "FROM " + message[1] + "\n"                       
+                                tosend = "FROM " + message[1] + "\n"   
+                                for x in range(2,len(message)):
+                                    self.usernames[message[x]].send(tosend)
                                 spliced = messageBody[1:]
                                 if verbose:
                                     print "RCVD from",message[1],"(",(self.usernames[message[1]]).getsockname(),"):"
@@ -191,6 +224,11 @@ class ChatServer(object):
                                 #print outputready
                                 
                                 tosend = "FROM " + message[1] + "\n"
+                                for key in self.usernames:
+                                    #print "sending to",key,"which is socket: ",self.usernames[key].fileno()
+                                    #print part
+                                    bytesSent = self.usernames[key].send(tosend)
+                                    #print bytesSent
                                 spliced = messageBody[1:]
                                 wholeMsg = ""
                                 for part in spliced:
