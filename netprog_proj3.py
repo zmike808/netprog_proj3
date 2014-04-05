@@ -1,14 +1,4 @@
-# First the server
-
-#!/usr/bin/env python
-#!/usr/bin/env python
-
-"""
-A basic, multiclient 'chat server' using Python's select module
-with interrupt handling.
-
-Entering any line of input at the terminal will exit the server.
-"""
+#BY MICHAEL ZEMSKY AND SEBASTIAN SARBORA
 
 import select
 import socket
