@@ -43,7 +43,7 @@ class ChatServer(object):
             serverUDP = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             server.bind(('',p))
-            print 'Listening to port',p,'...'
+            #print 'Listening to port',p,'...'
             server.listen(backlog)
             self.serverList.append(server)
         # Trap keyboard interrupts
@@ -51,7 +51,7 @@ class ChatServer(object):
         
     def sighandler(self, signum, frame):
         # Close the server
-        print 'Shutting down server...'
+        #print 'Shutting down server...'
         # Close existing client sockets
         for o in self.outputs:
             o.close()
@@ -88,7 +88,7 @@ class ChatServer(object):
             for s in inputready:
                 
                 if s in self.serverList:
-                    print "socket id:",s.fileno()
+                    #print "socket id:",s.fileno()
                     #if s.type == socket.DGRAM:
                         #addrInfo = socket.getnameinfo(s)
                         #pass
@@ -96,7 +96,7 @@ class ChatServer(object):
                         # handle the server socket
                     client, address = s.accept()
                     
-                    print 'chatserver: got connection %d from %s' % (client.fileno(), address)
+                    #print 'chatserver: got connection %d from %s' % (client.fileno(), address)
                     # Read the login name
                     try:
                         
@@ -167,6 +167,7 @@ class ChatServer(object):
                                            print nextchunk
                                            data = data + nextchunk
                                            check = nextchunk.split("\n")
+                                           print check
                                            getyourchunkon = check[-1].strip()
                                            if "C0" == getyourchunkon: #logically, if we're already chunking, the last chunk has to be c0, or some other chunk size, cause we still getting mad chunky in here
                                                foundlastchunk = True
@@ -180,8 +181,8 @@ class ChatServer(object):
                             
                             messageBody = data.split("\n")
                             message = messageBody[0].split(" ")
-                            print "split with spaces",message
-                            print "split by \\n",messageBody
+                            #print "split with spaces",message
+                            #print "split by \\n",messageBody
                             if message[0] == "SEND":
                                 tosend = "FROM " + message[1] + "\n"   
                                 for x in range(2,len(message)):
@@ -235,13 +236,13 @@ class ChatServer(object):
                                 for part in spliced:
                                     #print(part)
                                     part = part.strip() + "\n" #readd the \n
-                                    print part
+                                    #print part
                                     wholeMsg = wholeMsg + part
                                     for key in self.usernames:
-                                        print "sending to",key,"which is socket: ",self.usernames[key].fileno()
-                                        print part
+                                        #print "sending to",key,"which is socket: ",self.usernames[key].fileno()
+                                        #print part
                                         bytesSent = self.usernames[key].send(part)
-                                        print bytesSent
+                                        #print bytesSent
                                         
                                     #print(part)
                                     #print("part0: ",part[0],"clientKey:",clientKey)
@@ -313,6 +314,6 @@ if __name__ == "__main__":
     if "-v" in args:
         verbose = True
         args.remove("-v")
-    print args
+    #print args
     chatserver = ChatServer(port=args[1:])
     chatserver.serve()
