@@ -89,7 +89,7 @@ class ChatServer(object):
                         #pass
                     #else:
                     cname = None
-                    address = None
+                    #address = None
                     #print s
                     #print self.udps
                         # handle the server socket
@@ -100,10 +100,18 @@ class ChatServer(object):
                         if split[0] == "ME" and split[1] == "IS" and len(split) == 3:
                             udpname = split[2].strip("\n")
                             udpname = udpname.lower()
-                            if udpname in self.udpclients:
+                            if verbose:
+                                    print "RCVD from",address[0],":",msg#(",(self.udpclients[message[1]])[0],"):"
+                            if udpname in self.udpclients or udpname in self.usernames:
+                                if verbose:
+                                    print "SENT to",address[0],": ERROR\n"#,"(",(client).getsockname(),"):"
+
                                 s.sendto("ERROR\n",address)
                             else:
                                 self.udpclients[udpname] = address
+                                if verbose:
+                                    print "SENT to",address[0],": OK\n"#,"(",(client).getsockname(),"):"
+
                                 s.sendto("OK\n",address)
                         else:
                             #for key,value in self.udpclients.items():
@@ -153,12 +161,12 @@ class ChatServer(object):
                                             rFrom = (self.sendHistory[message[x]])[random.randint(0,2)]
                                             msgSent = "FROM "+rFrom+"\n"+str(len(rMessage))+"\n"+rMessage
                                             if verbose:
-                                                print "SENT (randomly!) TO",message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
+                                                print "SENT (randomly!) TO",message[x],"(",(self.usernames[message[x]]).getsockname()[0],"):"
                                                 print msgSent
                                             self.usernames[message[x]].sendall(msgSent)
                                             self.sendHistory[message[x]] = []
                                         if verbose:
-                                            print "SENT to",message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
+                                            print "SENT to",message[x],"(",(self.usernames[message[x]]).getsockname()[0],"):"
                                             print wholeMsg
                             elif message[0] == "BROADCAST" and len(message) == 2:                                
                                 tosend = "FROM " + message[1] + "\n"
@@ -190,12 +198,12 @@ class ChatServer(object):
                                         rFrom = (self.sendHistory[key])[random.randint(0,2)]
                                         msgSent = msgSent = "FROM "+rFrom+"\n"+str(len(rMessage))+"\n"+rMessage
                                         if verbose:
-                                            print "SENT (randomly!) TO",key,"(",(self.usernames[key]).getsockname(),"):"
+                                            print "SENT (randomly!) TO",key,"(",(self.usernames[key]).getsockname()[0],"):"
                                             print msgSent
                                         self.usernames[key].sendall(msgSent)
                                         self.sendHistory[key] = []
                                     if verbose:
-                                        print "SENT to",key,"(",(self.usernames[key]).getsockname(),"):"
+                                        print "SENT to",key,"(",(self.usernames[key]).getsockname()[0],"):"
                                         print wholeMsg
                                 for key in self.udpclients:
                                     if verbose:
@@ -224,22 +232,31 @@ class ChatServer(object):
                     # Read the login name
                         try:
                             
-                            cname = client.recv(BUFSIZE)#.split('ME IS ')[1].strip("\n").lower()
-                            split = cname.split(" ")
+                            presplit = client.recv(BUFSIZE)#.split('ME IS ')[1].strip("\n").lower()
+                            split = presplit.split(" ")
                             #client.setblocking(0)
                             #print cname
                             if split[0] == "ME" and split[1] == "IS" and len(split) == 3:
                                 cname = split[2].strip("\n")
                                 cname = cname.lower()
+                                if verbose:
+                                    print "RCVD from",client.getsockname()[0],":",presplit#(",(self.udpclients[message[1]])[0],"):"
+                                       
+
                             else:
                                 client.sendall("ERROR\n")
+                                if verbose:
+                                    print "SENT to",client.getsockname()[0],": ERROR\n"#,"(",(client).getsockname()[0],"):"
+
                                 break
                                 #print cname
                         except:
                             break
                                               
                         
-                        if cname in self.usernames:
+                        if cname in self.usernames or cname in self.udpclients:
+                            if verbose:
+                                print "SENT to",client.getsockname()[0],": ERROR\n"#,"(",(client).getsockname()[0],"):"
                             client.sendall("ERROR\n")
                             break
                         else:
@@ -248,6 +265,9 @@ class ChatServer(object):
                             #self.outputs = client
                             #print "cname is: ", cname
                             client.sendall("OK\n")
+                            if verbose:
+                                print "SENT to",client.getsockname()[0],": OK\n"#,"(",(client).getsockname()[0],"):"
+
                         
                         # Compute client name and send back
                         self.clients += 1
@@ -316,7 +336,7 @@ class ChatServer(object):
                                         spliced = messageBody[1:]
                                         if verbose:
                                             if message[1] in self.usernames:
-                                                print "RCVD from",message[1],"(",(self.usernames[message[1]]).getsockname(),"):"
+                                                print "RCVD from",message[1],"(",(self.usernames[message[1]]).getsockname()[0],"):"
                                                 for msg in messageBody:
                                                     print msg
                                         wholeMsg = ""
@@ -335,12 +355,12 @@ class ChatServer(object):
                                                 rFrom = (self.sendHistory[message[x]])[random.randint(0,2)]
                                                 msgSent = "FROM "+rFrom+"\n"+str(len(rMessage))+"\n"+rMessage
                                                 if verbose:
-                                                    print "SENT (randomly!) TO",message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
+                                                    print "SENT (randomly!) TO",message[x],"(",(self.usernames[message[x]]).getsockname()[0],"):"
                                                     print msgSent
                                                 self.usernames[message[x]].sendall(msgSent)
                                                 self.sendHistory[message[x]] = []
                                             if verbose:
-                                                print "SENT to",message[x],"(",(self.usernames[message[x]]).getsockname(),"):"
+                                                print "SENT to",message[x],"(",(self.usernames[message[x]]).getsockname()[0],"):"
                                                 print wholeMsg
                                     elif message[x] in self.udpclients:
                                         tosend = "FROM " + message[1] + "\n"   
@@ -353,6 +373,7 @@ class ChatServer(object):
                                             part = part.strip() + "\n" #readd the \n
                                             wholeMsg = wholeMsg + part
                                             sendmsg = sendmsg + part
+                                        
                                         s.sendto(sendmsg,self.udpclients[message[x]])
                                         if verbose:
                                             print "SENT to",message[x],"(",(self.udpclients[message[x]])[0],"):"
@@ -363,7 +384,7 @@ class ChatServer(object):
                                 sendmsg = tosend
                                 if verbose:
                                     if message[1] in self.usernames:
-                                        print "RCVD from",message[1],"(",(self.usernames[message[1]]).getsockname(),"):"
+                                        print "RCVD from",message[1],"(",(self.usernames[message[1]]).getsockname()[0],"):"
                                         for msg in messageBody:
                                             print msg
                                 #for key in self.usernames:
@@ -387,12 +408,12 @@ class ChatServer(object):
                                         rFrom = (self.sendHistory[key])[random.randint(0,2)]
                                         msgSent = msgSent = "FROM "+rFrom+"\n"+str(len(rMessage))+"\n"+rMessage
                                         if verbose:
-                                            print "SENT (randomly!) TO",key,"(",(self.usernames[key]).getsockname(),"):"
+                                            print "SENT (randomly!) TO",key,"(",(self.usernames[key]).getsockname()[0],"):"
                                             print msgSent
                                         self.usernames[key].sendall(msgSent)
                                         self.sendHistory[key] = []
                                     if verbose:
-                                        print "SENT to",key,"(",(self.usernames[key]).getsockname(),"):"
+                                        print "SENT to",key,"(",(self.usernames[key]).getsockname()[0],"):"
                                         print wholeMsg
                             elif message[0] == "WHO" and message[1] == "HERE" and len(message) == 3 and message[2] in self.usernames:
                                 whohere = ""                                
@@ -402,7 +423,7 @@ class ChatServer(object):
                                     whohere = whohere + key + "\n"
                                 self.usernames[message[2]].sendall(whohere)
                                 if verbose:
-                                    print "RCVD from",message[2],"(",(self.usernames[message[2]]).getsockname(),"):"
+                                    print "RCVD from",message[2],"(",(self.usernames[message[2]]).getsockname()[0],"):"
                                     print whohere
                             elif message[0] == "LOGOUT" and len(message) == 2 and message[1] in self.usernames:
                                 self.clients -= 1

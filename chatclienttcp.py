@@ -28,12 +28,11 @@ class ChatClient(object):
         self.prompt='[' + '@'.join((name, socket.gethostname().split('.')[0])) + ']> '
         # Connect to server at port
         try:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            #self.sock.connect()
-            #print 'Connected to chat server@%d' % self.port
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.sock.connect((host, self.port))
+            print 'Connected to chat server@%d' % self.port
             # Send my name...
-            addy =(host, self.port)
-        
+          
             while True:
                 #self.sock.sendall("BROADCAST test\nC10\n")
                 input = sys.stdin.readline().strip()
@@ -45,11 +44,10 @@ class ChatClient(object):
                     
                 print "SENDING TO SERVER:"
                 print tosend
-                self.sock.sendto(tosend,addy)
-                reply,addyy = self.sock.recvfrom(BUFSIZE)
+                self.sock.sendall(tosend)
+                reply = self.sock.recv(BUFSIZE)
                 print "RECEIVED FROM SERVER:"
                 print reply
-                #print addyy
             # Contains client address, set it
             #addr = data.split('CLIENT: ')[1]
             #self.prompt = '[' + '@'.join((self.name, addr)) + ']> '
@@ -99,4 +97,3 @@ if __name__ == "__main__":
         
     client = ChatClient(sys.argv[1],sys.argv[2], int(sys.argv[3]))
     #client.cmdloop()
-
